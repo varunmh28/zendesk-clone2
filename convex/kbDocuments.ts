@@ -10,6 +10,7 @@ import { v } from "convex/values";
 import { chunkText } from "./ai/chunking";
 import { embedBatch } from "./ai/embed";
 import { Id } from "./_generated/dataModel";
+import { checkKbQuotaHelper } from "./usage";
 
 /**
  * List all knowledge base documents for an organization
@@ -47,6 +48,13 @@ export const create = mutation({
     sizeBytes: v.number(),
   },
   handler: async (ctx, args) => {
+    const quota = await checkKbQuotaHelper(ctx, args.orgId);
+    if (!quota.allowed) {
+      throw new Error(
+        `Knowledge base document limit of ${quota.limit} reached for your ${quota.plan.toUpperCase()} plan. Please upgrade your subscription.`
+      );
+    }
+
     const documentId = await ctx.db.insert("kbDocuments", {
       orgId: args.orgId,
       name: args.name,
