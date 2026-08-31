@@ -1,4 +1,4 @@
-﻿import { defineSchema, defineTable } from "convex/server";
+import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
@@ -196,7 +196,9 @@ export default defineSchema({
   presenceSessions: defineTable({
     orgId: v.string(),
     conversationId: v.id("conversations"),
-    userId: v.id("users"),
+    userId: v.optional(v.id("users")),
+    visitorName: v.optional(v.string()),
+    role: v.optional(v.union(v.literal("agent"), v.literal("visitor"))),
     sessionId: v.string(),
     isTyping: v.boolean(),
     lastHeartbeat: v.number(),

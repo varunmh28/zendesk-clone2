@@ -1,12 +1,15 @@
-﻿export default async function WidgetPage({
+import { WidgetContainer } from "@/components/widget/widget-container";
+
+export default async function WidgetPage({
   params,
 }: {
   params: Promise<{ workspaceKey: string }>;
 }) {
   const { workspaceKey } = await params;
+
   return (
-    <div className="flex items-center justify-center h-screen text-muted-foreground text-sm">
-      Widget for workspace {workspaceKey} — Phase 2
-    </div>
+    <main className="h-screen w-screen overflow-hidden bg-transparent flex flex-col">
+      <WidgetContainer workspaceKey={workspaceKey} />
+    </main>
   );
-}
+}

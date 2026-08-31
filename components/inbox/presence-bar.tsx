@@ -9,7 +9,9 @@ interface PresenceBarProps {
   currentUserId?: Id<"users">;
   presenceSessions: Array<{
     sessionId: string;
-    userId: Id<"users">;
+    userId?: Id<"users">;
+    role?: string;
+    visitorName?: string;
     isTyping: boolean;
     lastHeartbeat: number;
     user: {
@@ -39,12 +41,15 @@ export function PresenceBar({
     return null;
   }
 
+  const visitorTyping = typingSessions.find((s) => s.role === "visitor" || !s.userId);
+  const visitorViewing = viewingSessions.find((s) => s.role === "visitor" || !s.userId);
+
   // Deduplicate by userId for display
   const uniqueTypingUsers = Array.from(
     new Map(
       typingSessions
         .filter((s) => s.user)
-        .map((s) => [s.userId, s.user!])
+        .map((s) => [s.userId!, s.user!])
     ).values()
   );
 
@@ -52,14 +57,24 @@ export function PresenceBar({
     new Map(
       viewingSessions
         .filter((s) => s.user)
-        .map((s) => [s.userId, s.user!])
+        .map((s) => [s.userId!, s.user!])
     ).values()
   );
 
   return (
     <div className="flex items-center justify-between px-4 py-1.5 bg-muted/40 border-t border-b text-xs text-muted-foreground transition-all">
       <div className="flex items-center gap-2">
-        {uniqueTypingUsers.length > 0 ? (
+        {visitorTyping ? (
+          <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-medium">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+            </span>
+            <span>
+              {visitorTyping.visitorName || "Visitor"} is typing...
+            </span>
+          </div>
+        ) : uniqueTypingUsers.length > 0 ? (
           <div className="flex items-center gap-1.5 text-primary font-medium">
             <span className="flex h-2 w-2 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -69,6 +84,11 @@ export function PresenceBar({
               {uniqueTypingUsers.map((u) => u.name).join(", ")}{" "}
               {uniqueTypingUsers.length > 1 ? "are" : "is"} typing...
             </span>
+          </div>
+        ) : visitorViewing ? (
+          <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+            <Eye className="h-3.5 w-3.5" />
+            <span>{visitorViewing.visitorName || "Visitor"} is in chat</span>
           </div>
         ) : (
           <div className="flex items-center gap-1.5">

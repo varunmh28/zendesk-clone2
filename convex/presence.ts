@@ -5,7 +5,9 @@ export const heartbeat = mutation({
   args: {
     orgId: v.string(),
     conversationId: v.id("conversations"),
-    userId: v.id("users"),
+    userId: v.optional(v.id("users")),
+    visitorName: v.optional(v.string()),
+    role: v.optional(v.union(v.literal("agent"), v.literal("visitor"))),
     sessionId: v.string(),
     isTyping: v.optional(v.boolean()),
   },
@@ -22,6 +24,8 @@ export const heartbeat = mutation({
         orgId: args.orgId,
         conversationId: args.conversationId,
         userId: args.userId,
+        visitorName: args.visitorName ?? existing.visitorName,
+        role: args.role ?? existing.role,
         isTyping: args.isTyping !== undefined ? args.isTyping : existing.isTyping,
         lastHeartbeat: now,
       });
@@ -32,6 +36,8 @@ export const heartbeat = mutation({
       orgId: args.orgId,
       conversationId: args.conversationId,
       userId: args.userId,
+      visitorName: args.visitorName,
+      role: args.role ?? "agent",
       sessionId: args.sessionId,
       isTyping: args.isTyping ?? false,
       lastHeartbeat: now,
@@ -58,10 +64,12 @@ export const listPresence = query({
 
     return await Promise.all(
       activeSessions.map(async (s) => {
-        const user = await ctx.db.get(s.userId);
+        const user = s.userId ? await ctx.db.get(s.userId) : null;
         return {
           sessionId: s.sessionId,
           userId: s.userId,
+          role: s.role ?? (s.userId ? "agent" : "visitor"),
+          visitorName: s.visitorName,
           conversationId: s.conversationId,
           isTyping: s.isTyping,
           lastHeartbeat: s.lastHeartbeat,
