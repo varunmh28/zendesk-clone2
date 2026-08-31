@@ -1,4 +1,4 @@
-﻿import { internalMutation } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
@@ -60,6 +60,56 @@ export const recordAndProcess = internalMutation({
           avatarUrl: m.public_user_data.image_url,
           role: roleMap[m.role] ?? "member",
         });
+        break;
+      }
+      case "subscription.created":
+      case "subscription.updated": {
+        const subData = data as Record<string, unknown>;
+        const orgId = (subData.organization_id ||
+          (subData.organization as { id?: string })?.id ||
+          subData.org_id) as string | undefined;
+
+        const planRaw = (
+          (subData.plan as { key?: string; name?: string; slug?: string })?.slug ||
+          (subData.plan as { key?: string; name?: string; slug?: string })?.key ||
+          subData.plan_key ||
+          subData.plan ||
+          "pro"
+        ) as string;
+
+        let plan: "free" | "pro" | "enterprise" = "free";
+        if (typeof planRaw === "string") {
+          const lower = planRaw.toLowerCase();
+          if (lower.includes("enterprise") || lower.includes("scale")) {
+            plan = "enterprise";
+          } else if (lower.includes("pro")) {
+            plan = "pro";
+          }
+        }
+
+        if (orgId) {
+          await ctx.runMutation(internal.billing.updateWorkspacePlanInternal, {
+            orgId,
+            plan,
+          });
+        }
+        break;
+      }
+      case "organization.updated": {
+        const orgData = data as { id?: string; name?: string; slug?: string; public_metadata?: Record<string, unknown> };
+        if (orgData.id && orgData.public_metadata?.plan) {
+          const planStr = String(orgData.public_metadata.plan).toLowerCase();
+          let plan: "free" | "pro" | "enterprise" = "free";
+          if (planStr.includes("enterprise") || planStr.includes("scale")) {
+            plan = "enterprise";
+          } else if (planStr.includes("pro")) {
+            plan = "pro";
+          }
+          await ctx.runMutation(internal.billing.updateWorkspacePlanInternal, {
+            orgId: orgData.id,
+            plan,
+          });
+        }
         break;
       }
       default:

@@ -4,7 +4,7 @@ import {
   internalMutation,
   internalQuery,
 } from "../_generated/server";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { v } from "convex/values";
 import { embedText } from "./embed";
 import { Id, Doc } from "../_generated/dataModel";
@@ -127,7 +127,47 @@ export const generateAiReply = action({
 
     const orgId = conversation.orgId;
 
-    // 2. Perform RAG vector search for relevant context
+    // 2. Check AI message monthly quota for this workspace
+    const quota = await ctx.runQuery(api.usage.checkAiQuota, { orgId });
+    if (quota && !quota.allowed) {
+      const fallbackQuotaMessage =
+        "Thank you for contacting us! Our automated AI assistant has reached its monthly plan limit. A human support representative will assist you shortly.";
+      await ctx.runMutation(internal.ai.agent.saveAiResponse, {
+        orgId,
+        conversationId: args.conversationId,
+        content: fallbackQuotaMessage,
+      });
+      return {
+        content: fallbackQuotaMessage,
+        citations: [],
+      };
+    }
+
+    // 3. Check burst rate limit
+    try {
+      const rateLimit = await ctx.runMutation(api.usage.checkRateLimit, {
+        orgId,
+        actionName: "aiMessageRate",
+      });
+      if (rateLimit && !rateLimit.ok) {
+        const waitSeconds = Math.ceil((rateLimit.retryAfter ?? 1000) / 1000);
+        const rateLimitReply = `Our AI assistant is currently experiencing high demand. Please retry in ${waitSeconds}s or hold on for a human agent.`;
+        await ctx.runMutation(internal.ai.agent.saveAiResponse, {
+          orgId,
+          conversationId: args.conversationId,
+          content: rateLimitReply,
+        });
+        return {
+          content: rateLimitReply,
+          citations: [],
+        };
+      }
+    } catch (e) {
+      // Non-blocking fallback if rate limiter table is not yet initialized
+      console.warn("Rate limit check passed with fallback:", e);
+    }
+
+    // 4. Perform RAG vector search for relevant context
     let ragChunks: SearchResult[] = [];
     try {
       const queryEmbedding = await embedText(args.userMessage);

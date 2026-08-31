@@ -1,5 +1,7 @@
 import { internalMutation, mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
+import { components } from "./_generated/api";
 import { v } from "convex/values";
+import { RateLimiter, MINUTE, HOUR } from "@convex-dev/rate-limiter";
 
 export function getCurrentPeriodStart(): number {
   const now = new Date();
@@ -273,5 +275,92 @@ export const checkKbQuota = query({
   },
   handler: async (ctx, args) => {
     return checkKbQuotaHelper(ctx, args.orgId);
+  },
+});
+
+/**
+ * Helper to check team seats quota directly inside server functions.
+ */
+export async function checkSeatQuotaHelper(
+  ctx: QueryCtx | MutationCtx,
+  orgId: string
+) {
+  const workspace = await ctx.db
+    .query("workspaces")
+    .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
+    .unique();
+
+  if (!workspace) {
+    return {
+      allowed: false,
+      used: 0,
+      limit: 0,
+      remaining: 0,
+      plan: "free" as const,
+      percentage: 100,
+    };
+  }
+
+  const users = await ctx.db
+    .query("users")
+    .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
+    .collect();
+
+  const used = users.filter((u) => u.isActive !== false).length;
+  const limit = workspace.seatLimit;
+  const isEnterprise = workspace.plan === "enterprise";
+  const allowed = isEnterprise || used < limit;
+  const remaining = isEnterprise ? 999999 : Math.max(0, limit - used);
+  const percentage =
+    isEnterprise || limit <= 0 ? 0 : Math.min(100, Math.round((used / limit) * 100));
+
+  return {
+    allowed,
+    used: Math.max(used, 1),
+    limit,
+    remaining,
+    plan: workspace.plan,
+    percentage,
+  };
+}
+
+/**
+ * Query to verify if team seat count is within limit.
+ */
+export const checkSeatQuota = query({
+  args: {
+    orgId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return checkSeatQuotaHelper(ctx, args.orgId);
+  },
+});
+
+/**
+ * RateLimiter instance using @convex-dev/rate-limiter component
+ */
+export const rateLimiter = new RateLimiter(components.rateLimiter, {
+  // Per-org AI message generation burst protection (e.g. 60/min)
+  aiMessageRate: { kind: "token bucket", rate: 60, period: MINUTE, capacity: 10 },
+  // Per-org Knowledge base uploads (e.g. 20/hr)
+  kbUploadRate: { kind: "token bucket", rate: 20, period: HOUR, capacity: 5 },
+  // General API/widget requests (e.g. 120/min)
+  apiRate: { kind: "token bucket", rate: 120, period: MINUTE, capacity: 20 },
+});
+
+/**
+ * Mutation to check or consume rate limit tokens for an organization
+ */
+export const checkRateLimit = mutation({
+  args: {
+    orgId: v.string(),
+    actionName: v.union(
+      v.literal("aiMessageRate"),
+      v.literal("kbUploadRate"),
+      v.literal("apiRate")
+    ),
+  },
+  handler: async (ctx, args) => {
+    return await rateLimiter.limit(ctx, args.actionName, { key: args.orgId });
   },
 });
