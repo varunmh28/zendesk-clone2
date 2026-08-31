@@ -8,7 +8,12 @@
  * @module
  */
 
+import type * as ai_agent from "../ai/agent.js";
+import type * as ai_embed from "../ai/embed.js";
+import type * as ai_rag from "../ai/rag.js";
+import type * as articles from "../articles.js";
 import type * as http from "../http.js";
+import type * as kbDocuments from "../kbDocuments.js";
 import type * as users from "../users.js";
 import type * as webhooks from "../webhooks.js";
 import type * as workspaces from "../workspaces.js";
@@ -20,7 +25,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "ai/agent": typeof ai_agent;
+  "ai/embed": typeof ai_embed;
+  "ai/rag": typeof ai_rag;
+  articles: typeof articles;
   http: typeof http;
+  kbDocuments: typeof kbDocuments;
   users: typeof users;
   webhooks: typeof webhooks;
   workspaces: typeof workspaces;
