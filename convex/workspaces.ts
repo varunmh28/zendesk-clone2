@@ -59,11 +59,19 @@ export const provisionWorkspace = internalMutation({
 export const getByOrgId = query({
   args: { orgId: v.string() },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
     return ctx.db
       .query("workspaces")
       .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .unique();
+  },
+});
+
+export const getBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query("workspaces")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
   },
 });
@@ -74,18 +82,6 @@ export const getByPublicKey = query({
     return ctx.db
       .query("workspaces")
       .withIndex("by_publicKey", (q) => q.eq("publicKey", args.publicKey))
-      .unique();
-  },
-});
-
-export const getBySlug = query({
-  args: { slug: v.string() },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-    return ctx.db
-      .query("workspaces")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
   },
 });

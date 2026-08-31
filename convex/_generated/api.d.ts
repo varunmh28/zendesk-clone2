@@ -8,8 +8,14 @@
  * @module
  */
 
+import type * as ai_agent from "../ai/agent.js";
+import type * as ai_chunking from "../ai/chunking.js";
+import type * as ai_embed from "../ai/embed.js";
+import type * as ai_rag from "../ai/rag.js";
+import type * as articles from "../articles.js";
 import type * as conversations from "../conversations.js";
 import type * as http from "../http.js";
+import type * as kbDocuments from "../kbDocuments.js";
 import type * as messages from "../messages.js";
 import type * as presence from "../presence.js";
 import type * as users from "../users.js";
@@ -24,8 +30,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "ai/agent": typeof ai_agent;
+  "ai/chunking": typeof ai_chunking;
+  "ai/embed": typeof ai_embed;
+  "ai/rag": typeof ai_rag;
+  articles: typeof articles;
   conversations: typeof conversations;
   http: typeof http;
+  kbDocuments: typeof kbDocuments;
   messages: typeof messages;
   presence: typeof presence;
   users: typeof users;
