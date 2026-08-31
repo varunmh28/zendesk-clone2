@@ -106,7 +106,7 @@ export function PricingTable() {
         </thead>
         <tbody className="divide-y divide-border/50">
           {COMPARISON_DATA.map((section, sIdx) => (
-            <ReactFragment key={sIdx} category={section.category} features={section.features} />
+            <FeatureSectionRows key={sIdx} category={section.category} features={section.features} />
           ))}
         </tbody>
       </table>
@@ -114,7 +114,7 @@ export function PricingTable() {
   );
 }
 
-function ReactFragment({ category, features }: { category: string; features: FeatureRow[] }) {
+function FeatureSectionRows({ category, features }: { category: string; features: FeatureRow[] }) {
   return (
     <>
       <tr className="bg-muted/30">
