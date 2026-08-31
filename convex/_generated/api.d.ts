@@ -8,7 +8,9 @@
  * @module
  */
 
+import type * as billing from "../billing.js";
 import type * as http from "../http.js";
+import type * as usage from "../usage.js";
 import type * as users from "../users.js";
 import type * as webhooks from "../webhooks.js";
 import type * as workspaces from "../workspaces.js";
@@ -20,7 +22,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  billing: typeof billing;
   http: typeof http;
+  usage: typeof usage;
   users: typeof users;
   webhooks: typeof webhooks;
   workspaces: typeof workspaces;
