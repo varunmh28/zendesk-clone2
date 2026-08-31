@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { api } from "./_generated/api";
 import { v } from "convex/values";
 
 export const getWidgetConfig = query({
@@ -122,6 +123,14 @@ export const sendVisitorMessage = mutation({
       isRead: false,
       status: "open",
     });
+
+    // Schedule AI agent reply if conversation has not been handed over to human
+    if (!conversation.handedToHuman) {
+      await ctx.scheduler.runAfter(0, api.ai.agent.generateAiReply, {
+        conversationId: args.conversationId,
+        userMessage: args.content,
+      });
+    }
 
     return messageId;
   },
