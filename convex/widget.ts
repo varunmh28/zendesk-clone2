@@ -145,7 +145,7 @@ export const sendVisitorMessage = mutation({
       status: "open",
     });
 
-    // If human agent has not taken over, trigger AI reply
+    // Schedule AI agent reply if conversation has not been handed over to human
     if (!conversation.handedToHuman) {
       await ctx.scheduler.runAfter(0, api.ai.agent.generateAiReply, {
         conversationId: args.conversationId,

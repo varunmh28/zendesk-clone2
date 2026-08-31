@@ -17,6 +17,7 @@ import type * as billing from "../billing.js";
 import type * as conversations from "../conversations.js";
 import type * as http from "../http.js";
 import type * as kbDocuments from "../kbDocuments.js";
+import type * as leads from "../leads.js";
 import type * as messages from "../messages.js";
 import type * as presence from "../presence.js";
 import type * as usage from "../usage.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   conversations: typeof conversations;
   http: typeof http;
   kbDocuments: typeof kbDocuments;
+  leads: typeof leads;
   messages: typeof messages;
   presence: typeof presence;
   usage: typeof usage;

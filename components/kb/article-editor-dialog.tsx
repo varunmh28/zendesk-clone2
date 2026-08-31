@@ -23,13 +23,16 @@ import {
   Loader2,
   Star,
   CheckCircle2,
+  Image as ImageIcon,
+  UploadCloud,
+  Trash2,
 } from "lucide-react";
 
 interface ArticleEditorDialogProps {
   isOpen: boolean;
   onClose: () => void;
   orgId: string;
-  articleToEdit?: Doc<"articles"> | null;
+  articleToEdit?: (Doc<"articles"> & { coverImageUrl?: string | null }) | null;
   existingCategories?: string[];
 }
 
@@ -51,12 +54,17 @@ export function ArticleEditorDialog({
 }: ArticleEditorDialogProps) {
   const createArticle = useMutation(api.articles.create);
   const updateArticle = useMutation(api.articles.update);
+  const generateUploadUrl = useMutation(api.articles.generateUploadUrl);
 
+  const coverImageInputRef = React.useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [category, setCategory] = useState("General");
   const [content, setContent] = useState("");
+  const [coverImageId, setCoverImageId] = useState<Id<"_storage"> | undefined>(undefined);
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isPublished, setIsPublished] = useState(true);
   const [isPopular, setIsPopular] = useState(false);
   const [viewMode, setViewMode] = useState<"split" | "edit" | "preview">("split");
@@ -70,6 +78,8 @@ export function ArticleEditorDialog({
       setSlugManuallyEdited(true);
       setCategory(articleToEdit.category);
       setContent(articleToEdit.content);
+      setCoverImageId(articleToEdit.coverImageId);
+      setCoverImageUrl(articleToEdit.coverImageUrl ?? null);
       setIsPublished(articleToEdit.isPublished);
       setIsPopular(articleToEdit.isPopular);
     } else {
@@ -78,6 +88,8 @@ export function ArticleEditorDialog({
       setSlugManuallyEdited(false);
       setCategory(existingCategories[0] || "General");
       setContent("");
+      setCoverImageId(undefined);
+      setCoverImageUrl(null);
       setIsPublished(true);
       setIsPopular(false);
     }
@@ -95,6 +107,58 @@ export function ArticleEditorDialog({
   const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSlugManuallyEdited(true);
     setSlug(slugify(e.target.value));
+  };
+
+  const handleCoverImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file (PNG, JPG, WebP, etc.)");
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setError(null);
+
+    try {
+      // 1. Get signed Convex upload URL
+      const uploadUrl = await generateUploadUrl();
+
+      // 2. Post file directly to Convex storage
+      const response = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to upload image: ${response.statusText}`);
+      }
+
+      const { storageId } = (await response.json()) as { storageId: Id<"_storage"> };
+      setCoverImageId(storageId);
+
+      // Create a local object URL for instant preview while Convex URL is registered
+      const previewUrl = URL.createObjectURL(file);
+      setCoverImageUrl(previewUrl);
+    } catch (err: any) {
+      console.error("Cover image upload failed:", err);
+      setError(err?.message || "Failed to upload cover image");
+    } finally {
+      setIsUploadingImage(false);
+      if (coverImageInputRef.current) {
+        coverImageInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemoveCoverImage = () => {
+    setCoverImageId(undefined);
+    setCoverImageUrl(null);
+    if (coverImageInputRef.current) {
+      coverImageInputRef.current.value = "";
+    }
   };
 
   const insertMarkdown = (prefix: string, suffix: string = "") => {
@@ -145,6 +209,7 @@ export function ArticleEditorDialog({
           slug: slug.trim(),
           category: category.trim() || "General",
           content: content.trim(),
+          coverImageId: coverImageId,
           isPublished,
           isPopular,
         });
@@ -155,6 +220,7 @@ export function ArticleEditorDialog({
           slug: slug.trim(),
           category: category.trim() || "General",
           content: content.trim(),
+          coverImageId: coverImageId,
           isPublished,
           isPopular,
         });
@@ -306,6 +372,77 @@ export function ArticleEditorDialog({
                   </span>
                 </label>
               </div>
+            </div>
+
+            {/* Cover Image Upload & Live Preview */}
+            <div className="border rounded-xl p-4 bg-muted/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                  <ImageIcon className="h-4 w-4 text-primary" />
+                  Cover Image (Optional)
+                </label>
+                {coverImageUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={handleRemoveCoverImage}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1 h-7 text-xs"
+                  >
+                    <Trash2 className="h-3 w-3" /> Remove Image
+                  </Button>
+                )}
+              </div>
+
+              <input
+                ref={coverImageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleCoverImageUpload}
+                disabled={isUploadingImage}
+              />
+
+              {coverImageUrl ? (
+                <div className="relative rounded-lg overflow-hidden border bg-background max-h-48 flex items-center justify-center group">
+                  <img
+                    src={coverImageUrl}
+                    alt="Cover preview"
+                    className="w-full h-44 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => coverImageInputRef.current?.click()}
+                      disabled={isUploadingImage}
+                      className="gap-1.5 text-xs shadow-md"
+                    >
+                      <UploadCloud className="h-3.5 w-3.5" /> Replace Cover
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => !isUploadingImage && coverImageInputRef.current?.click()}
+                  className="border-2 border-dashed border-border rounded-lg p-5 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-background/50 transition-all text-center"
+                >
+                  <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-2">
+                    {isUploadingImage ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <UploadCloud className="h-4 w-4" />
+                    )}
+                  </div>
+                  <div className="text-xs font-medium text-foreground">
+                    {isUploadingImage ? "Uploading cover image..." : "Upload cover image"}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    PNG, JPG, or WebP up to 5MB
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Markdown Content Editor & Preview */}

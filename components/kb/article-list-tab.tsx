@@ -22,6 +22,8 @@ import {
   FolderOpen,
 } from "lucide-react";
 
+type ArticleWithCover = Doc<"articles"> & { coverImageUrl?: string | null };
+
 interface ArticleListTabProps {
   orgId: string;
 }
@@ -30,8 +32,8 @@ export function ArticleListTab({ orgId }: ArticleListTabProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [articleToEdit, setArticleToEdit] = useState<Doc<"articles"> | null>(null);
-  const [articleToDelete, setArticleToDelete] = useState<Doc<"articles"> | null>(null);
+  const [articleToEdit, setArticleToEdit] = useState<ArticleWithCover | null>(null);
+  const [articleToDelete, setArticleToDelete] = useState<ArticleWithCover | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const categories = useQuery(api.articles.listCategories, { orgId }) || [];
@@ -146,9 +148,18 @@ export function ArticleListTab({ orgId }: ArticleListTabProps) {
           {articles.map((article) => (
             <div
               key={article._id}
-              className="flex flex-col justify-between p-5 rounded-xl border bg-card hover:border-primary/40 transition-all shadow-xs group"
+              className="flex flex-col justify-between rounded-xl border bg-card hover:border-primary/40 transition-all shadow-xs group overflow-hidden"
             >
-              <div>
+              {article.coverImageUrl && (
+                <div className="h-32 w-full overflow-hidden bg-muted/40 border-b relative">
+                  <img
+                    src={article.coverImageUrl}
+                    alt={article.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+              )}
+              <div className="p-5 flex-1 flex flex-col">
                 {/* Header tags */}
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <Badge variant="secondary" className="text-[11px] font-medium">
@@ -182,13 +193,13 @@ export function ArticleListTab({ orgId }: ArticleListTabProps) {
                 </h4>
 
                 {/* Excerpt */}
-                <p className="text-xs text-muted-foreground line-clamp-3 mb-4 leading-relaxed">
+                <p className="text-xs text-muted-foreground line-clamp-3 mb-4 leading-relaxed flex-1">
                   {article.content.replace(/[#*`_\[\]]/g, "").slice(0, 160)}
                 </p>
               </div>
 
               {/* Footer info & actions */}
-              <div className="pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
+              <div className="px-5 py-3 border-t bg-muted/10 flex items-center justify-between text-xs text-muted-foreground">
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1">
                     <Eye className="h-3.5 w-3.5" />

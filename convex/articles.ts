@@ -48,7 +48,17 @@ export const list = query({
       );
     }
 
-    return articles;
+    return await Promise.all(
+      articles.map(async (article) => {
+        const coverImageUrl = article.coverImageId
+          ? await ctx.storage.getUrl(article.coverImageId)
+          : null;
+        return {
+          ...article,
+          coverImageUrl,
+        };
+      })
+    );
   },
 });
 
@@ -62,18 +72,47 @@ export const get = query({
     orgId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    let article = null;
     if (args.id) {
-      return await ctx.db.get(args.id);
-    }
-    if (args.slug && args.orgId) {
-      const articles = await ctx.db
+      article = await ctx.db.get(args.id);
+    } else if (args.slug && args.orgId) {
+      article = await ctx.db
         .query("articles")
         .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId!))
         .filter((q) => q.eq(q.field("slug"), args.slug!))
         .first();
-      return articles;
     }
-    return null;
+    if (!article) return null;
+
+    const coverImageUrl = article.coverImageId
+      ? await ctx.storage.getUrl(article.coverImageId)
+      : null;
+
+    return {
+      ...article,
+      coverImageUrl,
+    };
+  },
+});
+
+/**
+ * Generate a signed upload URL for article cover images
+ */
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/**
+ * Get public URL for a stored cover image
+ */
+export const getCoverImageUrl = query({
+  args: { storageId: v.optional(v.id("_storage")) },
+  handler: async (ctx, args) => {
+    if (!args.storageId) return null;
+    return await ctx.storage.getUrl(args.storageId);
   },
 });
 
@@ -240,6 +279,15 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const article = await ctx.db.get(args.id);
     if (!article) return;
+
+    // Delete cover image from storage if present
+    if (article.coverImageId) {
+      try {
+        await ctx.storage.delete(article.coverImageId);
+      } catch (e) {
+        console.warn("Could not delete cover image from storage:", e);
+      }
+    }
 
     // Delete chunks
     const chunks = await ctx.db
