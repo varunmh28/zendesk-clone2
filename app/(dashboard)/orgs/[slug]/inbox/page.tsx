@@ -1,7 +1,18 @@
-﻿export default function InboxPage() {
-  return (
-    <div className="flex items-center justify-center h-full text-muted-foreground">
-      <p>Inbox — Phase 2</p>
-    </div>
-  );
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { InboxClientPage } from "./inbox-client-page";
+
+export default async function InboxPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const { orgId, orgSlug } = await auth();
+
+  if (!orgId || orgSlug !== slug) {
+    redirect("/dashboard");
+  }
+
+  return <InboxClientPage orgId={orgId} slug={slug} />;
 }

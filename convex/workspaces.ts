@@ -1,4 +1,4 @@
-﻿import { internalMutation, query } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { nanoid } from "nanoid";
 
@@ -74,6 +74,18 @@ export const getByPublicKey = query({
     return ctx.db
       .query("workspaces")
       .withIndex("by_publicKey", (q) => q.eq("publicKey", args.publicKey))
+      .unique();
+  },
+});
+
+export const getBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+    return ctx.db
+      .query("workspaces")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
   },
 });
