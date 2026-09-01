@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import {
   MessageSquare,
+  Globe,
   BookOpen,
   Users,
   Sliders,
@@ -18,12 +19,13 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const allNavItems = [
-  { label: "Inbox",          href: "inbox",      icon: MessageSquare, adminOnly: false },
-  { label: "Knowledge Base", href: "kb",         icon: BookOpen,      adminOnly: true  },
-  { label: "Leads",          href: "leads",      icon: Users,         adminOnly: true  },
-  { label: "Customizer",     href: "customizer", icon: Sliders,       adminOnly: true  },
-  { label: "Analytics",      href: "analytics",  icon: BarChart3,     adminOnly: true  },
-  { label: "Settings",       href: "settings",   icon: Settings,      adminOnly: true  },
+  { label: "Inbox",          href: "inbox",       icon: MessageSquare, adminOnly: false },
+  { label: "Sample Site",    href: "sample-site", icon: Globe,         adminOnly: false },
+  { label: "Knowledge Base", href: "kb",          icon: BookOpen,      adminOnly: true  },
+  { label: "Leads",          href: "leads",       icon: Users,         adminOnly: true  },
+  { label: "Customizer",     href: "customizer",  icon: Sliders,       adminOnly: true  },
+  { label: "Analytics",      href: "analytics",   icon: BarChart3,     adminOnly: true  },
+  { label: "Settings",       href: "settings",    icon: Settings,      adminOnly: true  },
 ];
 
 export function DashboardShell({ children }: { children: ReactNode }) {
