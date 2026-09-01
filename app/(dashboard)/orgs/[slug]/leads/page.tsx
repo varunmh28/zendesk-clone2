@@ -14,10 +14,5 @@ export default async function LeadsPage({
     redirect("/dashboard");
   }
 
-  const isAdmin = orgRole === "org:admin" || orgRole === "admin";
-  if (!isAdmin) {
-    redirect(`/orgs/${slug}/inbox`);
-  }
-
   return <LeadsClientPage slug={slug} orgId={orgId} />;
 }

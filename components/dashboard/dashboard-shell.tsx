@@ -21,8 +21,8 @@ import { cn } from "@/lib/utils";
 const allNavItems = [
   { label: "Inbox",          href: "inbox",       icon: MessageSquare, adminOnly: false },
   { label: "Sample Site",    href: "sample-site", icon: Globe,         adminOnly: false },
+  { label: "Leads",          href: "leads",       icon: Users,         adminOnly: false },
   { label: "Knowledge Base", href: "kb",          icon: BookOpen,      adminOnly: true  },
-  { label: "Leads",          href: "leads",       icon: Users,         adminOnly: true  },
   { label: "Customizer",     href: "customizer",  icon: Sliders,       adminOnly: true  },
   { label: "Analytics",      href: "analytics",   icon: BarChart3,     adminOnly: true  },
   { label: "Settings",       href: "settings",    icon: Settings,      adminOnly: true  },
