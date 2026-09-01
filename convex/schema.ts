@@ -166,10 +166,12 @@ export default defineSchema({
     title: v.string(),
     subtitle: v.optional(v.string()),
     logoId: v.optional(v.id("_storage")),
+    logoUrl: v.optional(v.string()),
     leadCaptureMode: v.union(
       v.literal("before_chat"),
       v.literal("mid_chat"),
-      v.literal("optional")
+      v.literal("optional"),
+      v.literal("disabled")
     ),
     proactiveEnabled: v.boolean(),
     proactiveDelaySeconds: v.number(),
@@ -179,6 +181,7 @@ export default defineSchema({
       v.object({
         question: v.string(),
         articleId: v.optional(v.id("articles")),
+        answer: v.optional(v.string()),
       })
     ),
   }).index("by_orgId", ["orgId"]),

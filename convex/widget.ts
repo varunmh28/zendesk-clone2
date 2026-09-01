@@ -19,9 +19,12 @@ export const getWidgetConfig = query({
       .withIndex("by_orgId", (q) => q.eq("orgId", workspace.orgId))
       .unique();
 
-    let logoUrl: string | null = null;
+    let logoUrl: string | null = widgetSettings?.logoUrl ?? null;
     if (widgetSettings?.logoId) {
-      logoUrl = await ctx.storage.getUrl(widgetSettings.logoId);
+      const storageUrl = await ctx.storage.getUrl(widgetSettings.logoId);
+      if (storageUrl) {
+        logoUrl = storageUrl;
+      }
     }
 
     const resolvedSettings = {
@@ -46,9 +49,145 @@ export const getWidgetConfig = query({
         slug: workspace.slug,
         plan: workspace.plan,
         orgId: workspace.orgId,
+        publicKey: workspace.publicKey,
       },
       widgetSettings: resolvedSettings,
     };
+  },
+});
+
+export const getWidgetSettings = query({
+  args: {
+    orgId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const widgetSettings = await ctx.db
+      .query("widgetSettings")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .unique();
+
+    let logoUrl: string | null = widgetSettings?.logoUrl ?? null;
+    if (widgetSettings?.logoId) {
+      const storageUrl = await ctx.storage.getUrl(widgetSettings.logoId);
+      if (storageUrl) {
+        logoUrl = storageUrl;
+      }
+    }
+
+    return {
+      primaryColor: widgetSettings?.primaryColor ?? "#6366f1",
+      borderRadius: widgetSettings?.borderRadius ?? "12px",
+      position: widgetSettings?.position ?? "bottom-right",
+      title: widgetSettings?.title ?? "Support",
+      subtitle: widgetSettings?.subtitle ?? "We typically reply in a few minutes",
+      logoId: widgetSettings?.logoId,
+      logoUrl,
+      leadCaptureMode: widgetSettings?.leadCaptureMode ?? "optional",
+      proactiveEnabled: widgetSettings?.proactiveEnabled ?? false,
+      proactiveDelaySeconds: widgetSettings?.proactiveDelaySeconds ?? 5,
+      proactiveMessage:
+        widgetSettings?.proactiveMessage ?? "Hi there! 👋 How can we help you today?",
+      soundEnabled: widgetSettings?.soundEnabled ?? true,
+      faqItems: widgetSettings?.faqItems ?? [],
+    };
+  },
+});
+
+export const updateWidgetSettings = mutation({
+  args: {
+    orgId: v.string(),
+    primaryColor: v.optional(v.string()),
+    borderRadius: v.optional(v.string()),
+    position: v.optional(v.union(v.literal("bottom-right"), v.literal("bottom-left"))),
+    title: v.optional(v.string()),
+    subtitle: v.optional(v.string()),
+    logoId: v.optional(v.id("_storage")),
+    logoUrl: v.optional(v.string()),
+    leadCaptureMode: v.optional(
+      v.union(
+        v.literal("before_chat"),
+        v.literal("mid_chat"),
+        v.literal("optional"),
+        v.literal("disabled")
+      )
+    ),
+    proactiveEnabled: v.optional(v.boolean()),
+    proactiveDelaySeconds: v.optional(v.number()),
+    proactiveMessage: v.optional(v.string()),
+    soundEnabled: v.optional(v.boolean()),
+    faqItems: v.optional(
+      v.array(
+        v.object({
+          question: v.string(),
+          articleId: v.optional(v.id("articles")),
+          answer: v.optional(v.string()),
+        })
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const existing = await ctx.db
+      .query("widgetSettings")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .unique();
+
+    if (existing) {
+      const patch: any = {};
+      if (args.primaryColor !== undefined) patch.primaryColor = args.primaryColor;
+      if (args.borderRadius !== undefined) patch.borderRadius = args.borderRadius;
+      if (args.position !== undefined) patch.position = args.position;
+      if (args.title !== undefined) patch.title = args.title;
+      if (args.subtitle !== undefined) patch.subtitle = args.subtitle;
+      if (args.logoId !== undefined) patch.logoId = args.logoId;
+      if (args.logoUrl !== undefined) patch.logoUrl = args.logoUrl;
+      if (args.leadCaptureMode !== undefined) patch.leadCaptureMode = args.leadCaptureMode;
+      if (args.proactiveEnabled !== undefined) patch.proactiveEnabled = args.proactiveEnabled;
+      if (args.proactiveDelaySeconds !== undefined)
+        patch.proactiveDelaySeconds = args.proactiveDelaySeconds;
+      if (args.proactiveMessage !== undefined)
+        patch.proactiveMessage = args.proactiveMessage;
+      if (args.soundEnabled !== undefined) patch.soundEnabled = args.soundEnabled;
+      if (args.faqItems !== undefined) patch.faqItems = args.faqItems;
+
+      await ctx.db.patch(existing._id, patch);
+      return existing._id;
+    }
+
+    const newId = await ctx.db.insert("widgetSettings", {
+      orgId: args.orgId,
+      primaryColor: args.primaryColor ?? "#6366f1",
+      borderRadius: args.borderRadius ?? "12px",
+      position: args.position ?? "bottom-right",
+      title: args.title ?? "Support",
+      subtitle: args.subtitle ?? "We typically reply in a few minutes",
+      logoId: args.logoId,
+      logoUrl: args.logoUrl,
+      leadCaptureMode: args.leadCaptureMode ?? "optional",
+      proactiveEnabled: args.proactiveEnabled ?? false,
+      proactiveDelaySeconds: args.proactiveDelaySeconds ?? 5,
+      proactiveMessage:
+        args.proactiveMessage ?? "Hi there! 👋 How can we help you today?",
+      soundEnabled: args.soundEnabled ?? true,
+      faqItems: args.faqItems ?? [],
+    });
+
+    return newId;
+  },
+});
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+    return await ctx.storage.generateUploadUrl();
   },
 });
 
@@ -432,4 +571,3 @@ export const submitLead = mutation({
     });
   },
 });
-
