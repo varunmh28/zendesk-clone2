@@ -1,4 +1,4 @@
-﻿import { internalMutation, query } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 export const upsertFromClerk = internalMutation({
@@ -51,7 +51,7 @@ export const listByOrgId = query({
   args: { orgId: v.string() },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    if (!identity) return [];
     return ctx.db
       .query("users")
       .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))

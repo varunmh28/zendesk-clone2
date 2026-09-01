@@ -12,7 +12,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    if (!identity) return [];
 
     const currentUser = await ctx.db
       .query("users")
@@ -106,7 +106,7 @@ export const get = query({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    if (!identity) return null;
 
     const conversation = await ctx.db.get(args.conversationId);
     if (!conversation) return null;
@@ -136,7 +136,9 @@ export const getStats = query({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    if (!identity) {
+      return { open: 0, unassigned: 0, assignedToMe: 0, unread: 0 };
+    }
 
     const currentUser = await ctx.db
       .query("users")
