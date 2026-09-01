@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, Show } from "@clerk/nextjs";
+import { CheckoutButton } from "@clerk/nextjs/experimental";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
@@ -309,14 +310,23 @@ export function BillingClientPage() {
               </p>
             </div>
           </div>
-          <Button
-            size="sm"
-            onClick={() => handlePlanChange(currentPlan === "free" ? "pro" : "enterprise")}
-            className="bg-rose-600 hover:bg-rose-700 text-white font-medium shrink-0 shadow-sm"
+          <CheckoutButton
+            planId={currentPlan === "free" ? "pro" : "enterprise"}
+            planPeriod="month"
+            for="organization"
+            newSubscriptionRedirectUrl={`/orgs/${orgSlug}/settings/billing`}
+            onSubscriptionComplete={() => handlePlanChange(currentPlan === "free" ? "pro" : "enterprise")}
           >
-            Upgrade Plan
-            <ArrowUpRight className="h-4 w-4 ml-1" />
-          </Button>
+            <Button
+              size="sm"
+              onClick={() => handlePlanChange(currentPlan === "free" ? "pro" : "enterprise")}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-medium shrink-0 shadow-sm gap-1.5 cursor-pointer"
+            >
+              <CreditCard className="h-4 w-4" />
+              Upgrade Plan (Checkout)
+              <ArrowUpRight className="h-4 w-4 ml-1" />
+            </Button>
+          </CheckoutButton>
         </div>
       )}
 
@@ -333,15 +343,24 @@ export function BillingClientPage() {
               </p>
             </div>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handlePlanChange(currentPlan === "free" ? "pro" : "enterprise")}
-            className="border-amber-500/40 hover:bg-amber-500/20 text-amber-900 dark:text-amber-100 shrink-0"
+          <CheckoutButton
+            planId={currentPlan === "free" ? "pro" : "enterprise"}
+            planPeriod="month"
+            for="organization"
+            newSubscriptionRedirectUrl={`/orgs/${orgSlug}/settings/billing`}
+            onSubscriptionComplete={() => handlePlanChange(currentPlan === "free" ? "pro" : "enterprise")}
           >
-            Upgrade Headroom
-            <ArrowUpRight className="h-4 w-4 ml-1" />
-          </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handlePlanChange(currentPlan === "free" ? "pro" : "enterprise")}
+              className="border-amber-500/40 hover:bg-amber-500/20 text-amber-900 dark:text-amber-100 shrink-0 gap-1.5 cursor-pointer"
+            >
+              <CreditCard className="h-4 w-4" />
+              Upgrade Headroom
+              <ArrowUpRight className="h-4 w-4 ml-1" />
+            </Button>
+          </CheckoutButton>
         </div>
       )}
 
@@ -566,25 +585,43 @@ export function BillingClientPage() {
                 </CardContent>
 
                 <CardFooter className="pt-4 border-t">
-                  <Button
-                    className="w-full font-medium"
-                    variant={isCurrent ? "outline" : plan.popular ? "default" : "secondary"}
-                    disabled={isCurrent || isUpdating}
-                    onClick={() => handlePlanChange(plan.id)}
-                  >
-                    {isUpdating ? (
-                      <span className="flex items-center gap-2">
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        Updating...
-                      </span>
-                    ) : isCurrent ? (
-                      "Current Plan"
-                    ) : plan.id === "enterprise" ? (
-                      "Contact Sales / Upgrade"
-                    ) : (
-                      `Upgrade to ${plan.name}`
-                    )}
-                  </Button>
+                  {isCurrent ? (
+                    <Button className="w-full font-medium" variant="outline" disabled>
+                      Current Plan
+                    </Button>
+                  ) : plan.id === "free" ? (
+                    <Button
+                      className="w-full font-medium"
+                      variant="secondary"
+                      disabled={isUpdating}
+                      onClick={() => handlePlanChange("free")}
+                    >
+                      {isUpdating ? "Downgrading..." : "Switch to Free Plan"}
+                    </Button>
+                  ) : (
+                    <Show when="signed-in">
+                      <CheckoutButton
+                        planId={plan.id}
+                        planPeriod="month"
+                        for="organization"
+                        newSubscriptionRedirectUrl={`/orgs/${orgSlug}/settings/billing`}
+                        onSubscriptionComplete={() => handlePlanChange(plan.id)}
+                      >
+                        <Button
+                          className="w-full font-medium gap-2 cursor-pointer shadow-sm"
+                          variant={plan.popular ? "default" : "secondary"}
+                          onClick={() => {
+                            handlePlanChange(plan.id);
+                          }}
+                        >
+                          <CreditCard className="h-4 w-4" />
+                          {plan.id === "enterprise"
+                            ? "Switch to Enterprise (Checkout)"
+                            : `Upgrade to ${plan.name} (Checkout)`}
+                        </Button>
+                      </CheckoutButton>
+                    </Show>
+                  )}
                 </CardFooter>
               </Card>
             );
