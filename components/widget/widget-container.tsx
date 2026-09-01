@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
@@ -9,8 +9,7 @@ import { WidgetChat, VisitorMessage } from "./widget-chat";
 import { WidgetFaq } from "./widget-faq";
 import { WidgetLeadForm } from "./widget-lead-form";
 import { playNotificationChime } from "./widget-audio";
-import { MessageSquare, X, Bot, Sparkles, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { X, Sparkles, Loader2 } from "lucide-react";
 
 interface WidgetContainerProps {
   workspaceKey: string;
@@ -23,6 +22,7 @@ export function WidgetContainer({ workspaceKey, isStandalone = true }: WidgetCon
   const [conversationId, setConversationId] = useState<Id<"conversations"> | null>(null);
   const [activeTab, setActiveTab] = useState<"chat" | "faq" | "lead">("chat");
   const [selectedArticleId, setSelectedArticleId] = useState<Id<"articles"> | null>(null);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
 
   // Proactive popup state
   const [showProactivePopup, setShowProactivePopup] = useState(false);
@@ -38,6 +38,7 @@ export function WidgetContainer({ workspaceKey, isStandalone = true }: WidgetCon
   // Mutations
   const initSession = useMutation(api.widget.initVisitorSession);
   const sendMessageMutation = useMutation(api.widget.sendVisitorMessage);
+  const requestHandoverMutation = useMutation(api.widget.requestHumanHandover);
   const visitorHeartbeat = useMutation(api.widget.visitorHeartbeat);
   const visitorSetTyping = useMutation(api.presence.setTyping);
   const submitLeadMutation = useMutation(api.widget.submitLead);
@@ -81,13 +82,29 @@ export function WidgetContainer({ workspaceKey, isStandalone = true }: WidgetCon
       .catch(console.error);
   }, [visitorId, config?.workspace, workspaceKey, initSession, visitorInfo]);
 
-  // 3. Messages query
+  // 3. Conversation & messages query
+  const conversation = useQuery(
+    api.widget.getVisitorConversation,
+    conversationId && visitorId
+      ? { publicKey: workspaceKey, visitorId, conversationId }
+      : "skip"
+  );
+
   const messages = useQuery(
     api.widget.getVisitorMessages,
     conversationId && visitorId
       ? { publicKey: workspaceKey, visitorId, conversationId }
       : "skip"
   );
+
+  // Clear AI generating state when AI reply arrives or handover occurs
+  useEffect(() => {
+    if (!messages || messages.length === 0) return;
+    const latest = messages[messages.length - 1];
+    if (latest.role === "ai" || latest.role === "agent" || conversation?.handedToHuman) {
+      setIsAiGenerating(false);
+    }
+  }, [messages, conversation?.handedToHuman]);
 
   // 4. Presence query (agents viewing/typing)
   const presence = useQuery(
@@ -156,6 +173,10 @@ export function WidgetContainer({ workspaceKey, isStandalone = true }: WidgetCon
   const handleSendMessage = async (content: string) => {
     if (!conversationId || !visitorId) return;
 
+    if (!conversation?.handedToHuman) {
+      setIsAiGenerating(true);
+    }
+
     await sendMessageMutation({
       publicKey: workspaceKey,
       visitorId,
@@ -164,6 +185,17 @@ export function WidgetContainer({ workspaceKey, isStandalone = true }: WidgetCon
     });
 
     setShowProactivePopup(false);
+  };
+
+  // Handle human handover request
+  const handleRequestHandover = async () => {
+    if (!conversationId || !visitorId) return;
+    setIsAiGenerating(false);
+    await requestHandoverMutation({
+      publicKey: workspaceKey,
+      visitorId,
+      conversationId,
+    });
   };
 
   // Handle visitor typing
@@ -232,6 +264,7 @@ export function WidgetContainer({ workspaceKey, isStandalone = true }: WidgetCon
   const { widgetSettings } = config;
   const primaryColor = widgetSettings.primaryColor || "#2563eb";
   const borderRadius = widgetSettings.borderRadius || "16px";
+  const isHandedToHuman = conversation?.handedToHuman ?? false;
 
   // Check if lead capture mode is 'before_chat' and not yet captured
   const isBeforeChatGate =
@@ -258,7 +291,10 @@ export function WidgetContainer({ workspaceKey, isStandalone = true }: WidgetCon
           if (tab === "chat") setSelectedArticleId(null);
         }}
         isAgentTyping={presence?.agentTyping}
+        isAiTyping={isAiGenerating}
         agentName={presence?.activeAgent?.name}
+        isHandedToHuman={isHandedToHuman}
+        onRequestHumanHandover={handleRequestHandover}
         leadCaptured={leadCaptured}
       />
 
@@ -289,7 +325,7 @@ export function WidgetContainer({ workspaceKey, isStandalone = true }: WidgetCon
                   setShowProactivePopup(false);
                   setProactiveDismissed(true);
                 }}
-                className="text-muted-foreground hover:text-foreground p-1 rounded-md"
+                className="text-muted-foreground hover:text-foreground p-1 rounded-md cursor-pointer"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -312,7 +348,10 @@ export function WidgetContainer({ workspaceKey, isStandalone = true }: WidgetCon
               onTyping={handleTyping}
               primaryColor={primaryColor}
               isAgentTyping={presence?.agentTyping}
+              isAiTyping={isAiGenerating}
               agentName={presence?.activeAgent?.name}
+              isHandedToHuman={isHandedToHuman}
+              onRequestHumanHandover={handleRequestHandover}
               proactiveMessage={widgetSettings.proactiveMessage}
               onOpenArticleModal={(articleId) => {
                 setSelectedArticleId(articleId);

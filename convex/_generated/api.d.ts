@@ -12,6 +12,7 @@ import type * as ai_agent from "../ai/agent.js";
 import type * as ai_chunking from "../ai/chunking.js";
 import type * as ai_embed from "../ai/embed.js";
 import type * as ai_rag from "../ai/rag.js";
+import type * as analytics from "../analytics.js";
 import type * as articles from "../articles.js";
 import type * as billing from "../billing.js";
 import type * as conversations from "../conversations.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   "ai/chunking": typeof ai_chunking;
   "ai/embed": typeof ai_embed;
   "ai/rag": typeof ai_rag;
+  analytics: typeof analytics;
   articles: typeof articles;
   billing: typeof billing;
   conversations: typeof conversations;

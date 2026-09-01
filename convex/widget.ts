@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { api } from "./_generated/api";
 import { v } from "convex/values";
+import { checkAiQuotaHelper, rateLimiter } from "./usage";
 
 export const getWidgetConfig = query({
   args: {
@@ -145,8 +146,43 @@ export const sendVisitorMessage = mutation({
       status: "open",
     });
 
-    // Schedule AI agent reply if conversation has not been handed over to human
+    // If conversation is NOT handed to human, evaluate AI response
     if (!conversation.handedToHuman) {
+      // 1. Quota check
+      const quota = await checkAiQuotaHelper(ctx, workspace.orgId);
+      if (!quota.allowed) {
+        await ctx.db.insert("messages", {
+          orgId: workspace.orgId,
+          conversationId: args.conversationId,
+          role: "ai",
+          content:
+            "Our AI assistant is currently at capacity, but our support team has been notified!",
+          isInternalNote: false,
+        });
+        return messageId;
+      }
+
+      // 2. Burst rate limit protection
+      try {
+        const rateLimit = await rateLimiter.limit(ctx, "aiMessageRate", {
+          key: workspace.orgId,
+        });
+        if (rateLimit && !rateLimit.ok) {
+          const waitSeconds = Math.ceil((rateLimit.retryAfter ?? 1000) / 1000);
+          await ctx.db.insert("messages", {
+            orgId: workspace.orgId,
+            conversationId: args.conversationId,
+            role: "ai",
+            content: `Our AI assistant is currently experiencing high demand. Please retry in ${waitSeconds}s or hold on for a human agent.`,
+            isInternalNote: false,
+          });
+          return messageId;
+        }
+      } catch (e) {
+        console.warn("Rate limiter check in sendVisitorMessage skipped:", e);
+      }
+
+      // 3. Schedule AI agent reply
       await ctx.scheduler.runAfter(0, api.ai.agent.generateAiReply, {
         conversationId: args.conversationId,
         userMessage: args.content,
@@ -154,6 +190,83 @@ export const sendVisitorMessage = mutation({
     }
 
     return messageId;
+  },
+});
+
+export const requestHumanHandover = mutation({
+  args: {
+    publicKey: v.string(),
+    visitorId: v.string(),
+    conversationId: v.id("conversations"),
+  },
+  handler: async (ctx, args) => {
+    const workspace = await ctx.db
+      .query("workspaces")
+      .withIndex("by_publicKey", (q) => q.eq("publicKey", args.publicKey))
+      .unique();
+
+    if (!workspace) throw new Error("Invalid public key");
+
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation) throw new Error("Conversation not found");
+
+    if (
+      conversation.orgId !== workspace.orgId ||
+      conversation.visitorId !== args.visitorId
+    ) {
+      throw new Error("Unauthorized conversation access");
+    }
+
+    await ctx.db.patch(args.conversationId, {
+      handedToHuman: true,
+      isRead: false,
+    });
+
+    const messageId = await ctx.db.insert("messages", {
+      orgId: workspace.orgId,
+      conversationId: args.conversationId,
+      role: "agent",
+      content:
+        "You have requested to speak with a human support agent. Our team has been notified and someone will be right with you!",
+      isInternalNote: false,
+    });
+
+    return { ok: true, messageId };
+  },
+});
+
+export const getVisitorConversation = query({
+  args: {
+    publicKey: v.string(),
+    visitorId: v.string(),
+    conversationId: v.id("conversations"),
+  },
+  handler: async (ctx, args) => {
+    const workspace = await ctx.db
+      .query("workspaces")
+      .withIndex("by_publicKey", (q) => q.eq("publicKey", args.publicKey))
+      .unique();
+
+    if (!workspace) return null;
+
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation) return null;
+
+    if (
+      conversation.orgId !== workspace.orgId ||
+      conversation.visitorId !== args.visitorId
+    ) {
+      return null;
+    }
+
+    return {
+      _id: conversation._id,
+      status: conversation.status,
+      handedToHuman: conversation.handedToHuman,
+      visitorName: conversation.visitorName,
+      visitorEmail: conversation.visitorEmail,
+      visitorPhone: conversation.visitorPhone,
+    };
   },
 });
 
