@@ -75,7 +75,7 @@ const FEATURES = [
     icon: Lock,
     title: "Enterprise Multi-Tenancy & RBAC",
     description:
-      "Built on Clerk Organizations with role-based permissions (Admin, Agent, Member), per-workspace public keys, and strict data isolation per organization.",
+      "Built on Clerk Organizations with role-based permissions (Admin & Member), per-workspace public keys, and strict data isolation per organization.",
     badge: "SOC2 Ready",
   },
 ];
