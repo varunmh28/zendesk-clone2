@@ -35,39 +35,40 @@ export async function embedText(text: string): Promise<number[]> {
     return createFallbackEmbedding(cleanText);
   }
 
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "models/text-embedding-004",
-        content: {
-          parts: [{ text: cleanText }],
-        },
-      }),
-    });
+  // Try standard embedding models
+  const models = ["gemini-embedding-001", "text-embedding-004", "gemini-embedding-2"];
+  for (const model of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${apiKey}`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: `models/${model}`,
+          content: {
+            parts: [{ text: cleanText }],
+          },
+          outputDimensionality: 768,
+        }),
+      });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`Gemini Embed API error (${response.status}):`, errText);
-      return createFallbackEmbedding(cleanText);
+      if (!response.ok) {
+        continue;
+      }
+
+      const data = (await response.json()) as {
+        embedding?: { values?: number[] };
+      };
+
+      if (data.embedding?.values && data.embedding.values.length === 768) {
+        return data.embedding.values;
+      }
+    } catch {
+      // try next model
     }
-
-    const data = (await response.json()) as {
-      embedding?: { values?: number[] };
-    };
-
-    if (data.embedding?.values && data.embedding.values.length === 768) {
-      return data.embedding.values;
-    }
-
-    console.warn("Gemini Embed API response did not contain 768 values, using fallback");
-    return createFallbackEmbedding(cleanText);
-  } catch (error) {
-    console.error("Failed to generate embedding via Gemini API:", error);
-    return createFallbackEmbedding(cleanText);
   }
+
+  return createFallbackEmbedding(cleanText);
 }
 
 /**
@@ -82,56 +83,12 @@ export async function embedBatch(texts: string[]): Promise<number[][]> {
     return texts.map(createFallbackEmbedding);
   }
 
-  // Gemini batch embed accepts up to 100 requests per batch
-  const batchSize = 50;
+  // Sequential or chunked embedding with fallback
   const results: number[][] = [];
-
-  for (let i = 0; i < texts.length; i += batchSize) {
-    const chunk = texts.slice(i, i + batchSize);
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents?key=${apiKey}`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requests: chunk.map((text) => ({
-            model: "models/text-embedding-004",
-            content: {
-              parts: [{ text: text.trim() || " " }],
-            },
-          })),
-        }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error(`Gemini Batch Embed API error (${response.status}):`, errText);
-        results.push(...chunk.map(createFallbackEmbedding));
-        continue;
-      }
-
-      const data = (await response.json()) as {
-        embeddings?: Array<{ values?: number[] }>;
-      };
-
-      if (data.embeddings && data.embeddings.length === chunk.length) {
-        for (let j = 0; j < chunk.length; j++) {
-          const emb = data.embeddings[j]?.values;
-          if (emb && emb.length === 768) {
-            results.push(emb);
-          } else {
-            results.push(createFallbackEmbedding(chunk[j]));
-          }
-        }
-      } else {
-        results.push(...chunk.map(createFallbackEmbedding));
-      }
-    } catch (error) {
-      console.error("Failed to generate batch embeddings via Gemini API:", error);
-      results.push(...chunk.map(createFallbackEmbedding));
-    }
+  for (const text of texts) {
+    const emb = await embedText(text);
+    results.push(emb);
   }
-
   return results;
 }
 

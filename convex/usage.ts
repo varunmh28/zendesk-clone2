@@ -18,7 +18,7 @@ export const getUsageMetrics = query({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    if (!identity) return null;
 
     const period = args.periodStart ?? getCurrentPeriodStart();
 
