@@ -435,7 +435,7 @@ export function SampleSiteClient({ orgId, slug }: SampleSiteClientProps) {
       {isWidgetOpen && workspace?.publicKey && (
         <div
           className={cn(
-            "fixed z-50 shadow-2xl border border-border overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col bg-background",
+            "fixed z-50 shadow-2xl border border-border overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col bg-white text-slate-900",
             position === "bottom-left"
               ? "bottom-4 left-4 sm:bottom-6 sm:left-6 w-[calc(100vw-2rem)] sm:w-[400px] h-[calc(100vh-6rem)] sm:h-[620px]"
               : "bottom-4 right-4 sm:bottom-6 sm:right-6 w-[calc(100vw-2rem)] sm:w-[400px] h-[calc(100vh-6rem)] sm:h-[620px]"

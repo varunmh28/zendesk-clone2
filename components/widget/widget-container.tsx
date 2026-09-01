@@ -274,7 +274,7 @@ export function WidgetContainer({ workspaceKey, isStandalone = true }: WidgetCon
 
   return (
     <div
-      className="flex flex-col h-screen w-full overflow-hidden bg-white dark:bg-slate-950 shadow-2xl border transition-all"
+      className="flex flex-col h-screen w-full overflow-hidden bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 shadow-2xl border transition-all"
       style={{
         borderRadius: isStandalone ? borderRadius : "0px",
       }}

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { User, Mail, Phone, MessageSquare, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
@@ -100,7 +100,7 @@ export function WidgetLeadForm({
                 placeholder="Jane Doe"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="pl-9 text-xs h-9"
+                className="pl-9 text-xs h-9 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
             </div>
           </div>
@@ -118,7 +118,7 @@ export function WidgetLeadForm({
                 placeholder="jane@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-9 text-xs h-9"
+                className="pl-9 text-xs h-9 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
             </div>
           </div>
@@ -135,7 +135,7 @@ export function WidgetLeadForm({
                 placeholder="+1 (555) 000-0000"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="pl-9 text-xs h-9"
+                className="pl-9 text-xs h-9 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
             </div>
           </div>
