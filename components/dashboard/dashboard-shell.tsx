@@ -1,7 +1,6 @@
-﻿"use client";
+"use client";
 
-import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
-import { useAuth } from "@clerk/nextjs";
+import { OrganizationSwitcher, UserButton, useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -12,22 +11,28 @@ import {
   Sliders,
   Settings,
   BarChart3,
+  Shield,
+  User,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { label: "Inbox",          href: "inbox",      icon: MessageSquare },
-  { label: "Knowledge Base", href: "kb",         icon: BookOpen      },
-  { label: "Leads",          href: "leads",      icon: Users         },
-  { label: "Customizer",     href: "customizer", icon: Sliders       },
-  { label: "Analytics",      href: "analytics",  icon: BarChart3     },
-  { label: "Settings",       href: "settings",   icon: Settings      },
+const allNavItems = [
+  { label: "Inbox",          href: "inbox",      icon: MessageSquare, adminOnly: false },
+  { label: "Knowledge Base", href: "kb",         icon: BookOpen,      adminOnly: true  },
+  { label: "Leads",          href: "leads",      icon: Users,         adminOnly: true  },
+  { label: "Customizer",     href: "customizer", icon: Sliders,       adminOnly: true  },
+  { label: "Analytics",      href: "analytics",  icon: BarChart3,     adminOnly: true  },
+  { label: "Settings",       href: "settings",   icon: Settings,      adminOnly: true  },
 ];
 
 export function DashboardShell({ children }: { children: ReactNode }) {
-  const { orgSlug } = useAuth();
+  const { orgSlug, orgRole } = useAuth();
   const pathname = usePathname();
   const base = `/orgs/${orgSlug}`;
+  const isAdmin = orgRole === "org:admin" || orgRole === "admin";
+
+  const navItems = allNavItems.filter((item) => isAdmin || !item.adminOnly);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -47,6 +52,19 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               },
             }}
           />
+        </div>
+
+        {/* Role indicator */}
+        <div className="px-4 py-2 border-b bg-muted/20 flex items-center justify-between">
+          <span className="text-[11px] text-muted-foreground font-medium">Your Role</span>
+          <Badge variant={isAdmin ? "default" : "secondary"} className="text-[10px] px-2 py-0 h-4 capitalize font-medium flex items-center gap-1">
+            {isAdmin ? (
+              <Shield className="h-2.5 w-2.5 text-primary-foreground" />
+            ) : (
+              <User className="h-2.5 w-2.5 text-muted-foreground" />
+            )}
+            {isAdmin ? "Admin" : "Member"}
+          </Badge>
         </div>
 
         {/* Nav */}

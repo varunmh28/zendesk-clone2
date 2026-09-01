@@ -25,7 +25,7 @@ export default defineSchema({
     name: v.string(),
     email: v.string(),
     avatarUrl: v.optional(v.string()),
-    role: v.union(v.literal("admin"), v.literal("agent"), v.literal("member")),
+    role: v.union(v.literal("admin"), v.literal("member")),
     isActive: v.boolean(),
   })
     .index("by_orgId", ["orgId"])

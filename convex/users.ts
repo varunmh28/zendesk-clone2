@@ -9,7 +9,7 @@ export const upsertFromClerk = internalMutation({
     name: v.string(),
     email: v.string(),
     avatarUrl: v.optional(v.string()),
-    role: v.union(v.literal("admin"), v.literal("agent"), v.literal("member")),
+    role: v.union(v.literal("admin"), v.literal("member")),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db

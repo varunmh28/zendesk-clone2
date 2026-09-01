@@ -46,9 +46,8 @@ export const recordAndProcess = internalMutation({
           role: string;
         };
         const m = data as MembershipData;
-        const roleMap: Record<string, "admin" | "agent" | "member"> = {
+        const roleMap: Record<string, "admin" | "member"> = {
           "org:admin": "admin",
-          "org:agent": "agent",
           "org:member": "member",
         };
         await ctx.runMutation(internal.users.upsertFromClerk, {

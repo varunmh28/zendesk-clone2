@@ -8,10 +8,15 @@ export default async function AnalyticsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const { orgId, orgSlug } = await auth();
+  const { orgId, orgSlug, orgRole } = await auth();
 
   if (!orgId || orgSlug !== slug) {
     redirect("/dashboard");
+  }
+
+  const isAdmin = orgRole === "org:admin" || orgRole === "admin";
+  if (!isAdmin) {
+    redirect(`/orgs/${slug}/inbox`);
   }
 
   return <AnalyticsView orgId={orgId} />;
